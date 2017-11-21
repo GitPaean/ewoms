@@ -29,6 +29,7 @@
 #define EWOMS_BLACK_OIL_POLYMER_MODULE_HH
 
 #include "blackoilproperties.hh"
+#include "Point2D.hh"
 #include <ewoms/io/vtkblackoilpolymermodule.hh>
 #include <ewoms/models/common/quantitycallbacks.hh>
 
@@ -53,6 +54,7 @@
 #include <dune/common/fvector.hh>
 
 #include <string>
+#include <array>
 
 namespace Ewoms {
 /*!
@@ -692,10 +694,11 @@ public:
         }
 
         const std::vector<Scalar>& shearEffectRefLogVelocity = plyshlogShearEffectRefLogVelocity_[pvtnumRegionIdx];
-        auto v0AbsLog = Opm::log(Opm::abs(v0));
+        const Evaluation v0AbsLog = Opm::log(Opm::abs(v0));
         // return 1.0 if the velocity /sharte is smaller than the first velocity entry.
-        if (v0AbsLog < shearEffectRefLogVelocity[0])
+        if (v0AbsLog < shearEffectRefLogVelocity[0]) {
             return 1.0;
+        }
 
         // compute shear factor from input
         // Z = (1 + (P - 1) * M(v) ) / P
@@ -710,11 +713,63 @@ public:
             shearEffectMultiplier[i] = (1.0 + (viscosityMultiplier - 1.0)*shearEffectRefMultiplier[i]) / viscosityMultiplier;
             shearEffectMultiplier[i] = Opm::log(shearEffectMultiplier[i]);
         }
+
+        // in which segment line intersects with the table segments
+        int iSegment = 0;
+
+        // TODO: calcuation with Evaluation can be more expensive than pure scalar
+        for (; iSegment < numTableEntries-1; ++iSegment) {
+            const Evaluation temp1 = shearEffectMultiplier[iSegment] + shearEffectRefLogVelocity[iSegment] - v0AbsLog;
+            const Evaluation temp2 = shearEffectMultiplier[iSegment + 1] + shearEffectRefLogVelocity[iSegment + 1] - v0AbsLog;
+
+            if (temp1 * temp2 <= 0.) {
+                break;
+            }
+        }
+
+        // the shear factor we are calculating
+        Evaluation shearMult = 1.;
+
+        typedef Opm::detail::Point2D<Evaluation> Point2DEvaluation;
+        if (iSegment < numTableEntries) {
+            // calculate the intersection point
+            // two endpoints for the segment interested
+            const Point2DEvaluation lineSegment0(shearEffectRefLogVelocity[iSegment], shearEffectMultiplier[iSegment]);
+            const Point2DEvaluation lineSegment1(shearEffectRefLogVelocity[iSegment + 1], shearEffectMultiplier[iSegment + 1]);
+
+            const std::array<Point2DEvaluation, 2> lineSegment = {lineSegment0, lineSegment1};
+
+            // the two points to define a straight line
+            const Point2DEvaluation line0(0., v0AbsLog);
+            const Point2DEvaluation line1(v0AbsLog, 0.);
+
+            const std::array<Point2DEvaluation, 2> line = {line0, line1};
+
+            Point2DEvaluation intersectionPoint;
+
+            const bool foundIntersection = Opm::detail::Point2D<Evaluation>::findIntersection(lineSegment, line, intersectionPoint);
+
+            if (foundIntersection) {
+                shearMult =  Opm::exp(intersectionPoint.getY());
+            } else {
+                OPM_THROW(std::runtime_error, "Not able to compute shear velocity. \n");
+            }
+        } else {
+            // check if the failure in finding the shear multiplier is due to too large water velocity
+            if ((v0AbsLog - shearEffectMultiplier.back()) >= shearEffectRefLogVelocity.back()) {
+                shearMult = Opm::exp(shearEffectRefMultiplier.back());
+            } else {
+                OPM_THROW(std::runtime_error, "Not able to compute shear velocity, while not because of too large water velocity \n");
+            }
+        }
+
+        return shearMult;
+
         // store the logarithmic velocity and logarithmic multipliers in a table for easy look up and
         // linear interpolation in the logarithmic space.
-        TabulatedFunction logShearEffectMultiplier = TabulatedFunction(numTableEntries, shearEffectRefLogVelocity, shearEffectMultiplier, /*bool sortInputs =*/ false );
+        // TabulatedFunction logShearEffectMultiplier = TabulatedFunction(numTableEntries, shearEffectRefLogVelocity, shearEffectMultiplier, /*bool sortInputs =*/ false );
 
-        // Find sheared velocity (v) that satisfies
+/*         // Find sheared velocity (v) that satisfies
         // F = log(v) + log (Z) - log(v0) = 0;
 
         // Set up the function
@@ -742,10 +797,10 @@ public:
         }
         if (!converged) {
             OPM_THROW(std::runtime_error, "Not able to compute shear velocity. \n");
-        }
+        } */
 
         // return the shear factor
-        return Opm::exp( logShearEffectMultiplier.eval(u, /*extrapolate=*/true) );
+        // return Opm::exp( logShearEffectMultiplier.eval(u, /*extrapolate=*/true) );
 
     }
 
