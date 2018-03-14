@@ -35,6 +35,10 @@ namespace Ewoms {
  *
  * \brief The primary variable and equation indices for the black-oil model.
  */
+ // TODO: it will depend how it is used, maybe the polymer molecular weight related can be unified with
+ // the old polymer related?
+ // for now, we assume they are not related and exclusive?
+ // TODO: since for the moment, it will mostly focus on oil water polymer development, will come back to this one
 template <unsigned numSolventsV, unsigned numPolymersV, unsigned PVOffset>
 struct BlackOilIndices
 {
@@ -99,10 +103,10 @@ struct BlackOilIndices
     // two continuity equations follow
 
     //! Index of the continuity equation for the first solvent component
-    static const int contiSolventEqIdx = PVOffset + numPhases - 1 + numSolvents;
+    static const int contiSolventEqIdx = PVOffset + numPhases;
 
     //! Index of the continuity equation for the first polymer component
-    static const int contiPolymerEqIdx = contiSolventEqIdx + numPolymers;
+    static const int contiPolymerEqIdx = contiSolventEqIdx + numSolvents;
     // numSolvents-1 continuity equations follow
 };
 

@@ -123,6 +123,7 @@ public:
 // by default, the ECL solvent module is disabled
 SET_BOOL_PROP(BlackOilModel, EnableSolvent, false);
 SET_BOOL_PROP(BlackOilModel, EnablePolymer, false);
+SET_BOOL_PROP(BlackOilModel, EnablePolymerMW, false);
 // by default, ebos formulates the conservation equations in terms of mass not surface volumes
 SET_BOOL_PROP(BlackOilModel, BlackoilConserveSurfaceVolume, false);
 } // namespace Properties

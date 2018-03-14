@@ -37,7 +37,8 @@ namespace Ewoms {
  *
  * \brief The primary variable and equation indices for the black-oil model.
  */
-template <unsigned numSolventsV, unsigned numPolymersV, unsigned PVOffset, unsigned disabledCanonicalCompIdx>
+// TODO: later to check how to interact between numPolymersV and numPolymersMWV
+template <unsigned numSolventsV, unsigned numPolymersV, unsigned numPolymersMWV, unsigned PVOffset, unsigned disabledCanonicalCompIdx>
 struct BlackOilTwoPhaseIndices
 {
 
@@ -81,6 +82,12 @@ struct BlackOilTwoPhaseIndices
 
     //! Index of the primary variable for the first polymer
     static const int polymerConcentrationIdx  = solventSaturationIdx + numSolvents;
+
+    //! Index of the primary variable for the polymer molecular weight
+    // TODO: this needs to be checked later
+    // Basically, should we disable EnablePolymer when enabling EnablePolymerMW
+    // TODO: for the moment, we will disable EnablePolymer when enabling EnablePolymerMW
+    static const int polymerMoleWeightIdx = polymerConcentrationIdx + 1;
 
     // numSolvents-1 primary variables follow
 
@@ -130,10 +137,13 @@ struct BlackOilTwoPhaseIndices
     // two continuity equations follow
 
     //! Index of the continuity equation for the first solvent component
-    static const int contiSolventEqIdx = PVOffset + numPhases - 1 + numSolvents;
+    static const int contiSolventEqIdx = PVOffset + numPhases;
 
     //! Index of the continuity equation for the first polymer component
-    static const int contiPolymerEqIdx = contiSolventEqIdx + numPolymers;
+    static const int contiPolymerEqIdx = contiSolventEqIdx + numSolvents;
+
+    //! Index of the conitnuity equation for the polymer molecular weight
+    static const int contiPolymerMWEqIdx = contiPolymerEqIdx + 1;
     // numSolvents-1 continuity equations follow
 
 };
