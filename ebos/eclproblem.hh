@@ -267,6 +267,7 @@ class EclProblem : public GET_PROP_TYPE(TypeTag, BaseProblem)
     enum { numComponents = FluidSystem::numComponents };
     enum { enableSolvent = GET_PROP_VALUE(TypeTag, EnableSolvent) };
     enum { enablePolymer = GET_PROP_VALUE(TypeTag, EnablePolymer) };
+    enum { enablePolymerMW = GET_PROP_VALUE(TypeTag, EnablePolymerMW) };
     enum { gasPhaseIdx = FluidSystem::gasPhaseIdx };
     enum { oilPhaseIdx = FluidSystem::oilPhaseIdx };
     enum { waterPhaseIdx = FluidSystem::waterPhaseIdx };
@@ -290,6 +291,7 @@ class EclProblem : public GET_PROP_TYPE(TypeTag, BaseProblem)
 
     typedef BlackOilSolventModule<TypeTag> SolventModule;
     typedef BlackOilPolymerModule<TypeTag> PolymerModule;
+    typedef BlackOilPolymerMWModule<TypeTag> PolymerMWModule;
 
     typedef Opm::BlackOilFluidState<Scalar,
             FluidSystem,
@@ -343,6 +345,7 @@ public:
         const auto& vanguard = simulator.vanguard();
         SolventModule::initFromDeck(vanguard.deck(), vanguard.eclState());
         PolymerModule::initFromDeck(vanguard.deck(), vanguard.eclState());
+        PolymerMWModule::initFromDeck(vanguard.deck(), vanguard.eclState());
 
         if (EWOMS_GET_PARAM(TypeTag, bool, EnableEclOutput))
             // create the ECL writer
@@ -435,7 +438,7 @@ public:
 
         updatePffDofData_();
 
-        if (GET_PROP_VALUE(TypeTag, EnablePolymer)) {
+        if (enablePolymer || enablePolymerMW) {
             const auto& vanguard = this->simulator().vanguard();
             const auto& gridView = vanguard.gridView();
             int numElements = gridView.size(/*codim=*/0);
@@ -539,7 +542,7 @@ public:
         const bool invalidateFromMaxOilSat = updateMaxOilSaturation_();
         const bool doInvalidate = invalidateFromHyst || invalidateFromMaxOilSat;
 
-        if (GET_PROP_VALUE(TypeTag, EnablePolymer))
+        if (enablePolymer || enablePolymerMW)
             updateMaxPolymerAdsorption_();
 
         if (!GET_PROP_VALUE(TypeTag, DisableWells))
@@ -1016,8 +1019,10 @@ public:
         if (enableSolvent)
              values[Indices::solventSaturationIdx] = solventSaturation_[globalDofIdx];
 
-        if (enablePolymer)
+        if (enablePolymer || enablePolymerMW)
              values[Indices::polymerConcentrationIdx] = polymerConcentration_[globalDofIdx];
+
+        // TODO: we need to the thing related to polymer molecular weight here
     }
 
     /*!
@@ -1643,7 +1648,7 @@ private:
             }
         }
 
-        if (enablePolymer) {
+        if (enablePolymer || enablePolymerMW) {
             const std::vector<double>& polyConcentrationData = eclState.get3DProperties().getDoubleGridProperty("SPOLY").getData();
             polymerConcentration_.resize(numDof,0.0);
             for (size_t dofIdx = 0; dofIdx < numDof; ++dofIdx) {
@@ -1653,6 +1658,8 @@ private:
                 polymerConcentration_[dofIdx] = polyConcentrationData[cartesianDofIdx];
             }
         }
+
+        // TODO: something related to polymer molecular weight should  be done here
     }
 
 
