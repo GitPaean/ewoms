@@ -80,6 +80,7 @@ class BlackOilPolymerMWModule
 
     static constexpr unsigned polymerConcentrationIdx = Indices::polymerConcentrationIdx;
     static constexpr unsigned contiPolymerEqIdx = Indices::contiPolymerEqIdx;
+    // TODO: there will be an index for polymer molecular weight
     static constexpr unsigned waterPhaseIdx = FluidSystem::waterPhaseIdx;
 
 
@@ -96,21 +97,36 @@ public:
      */
     static void initFromDeck(const Opm::Deck& deck, const Opm::EclipseState& eclState)
     {
+        // To use this module, you need to have keyword POLYMW for the polymer molecular weight
+        // As a rule, keyword POLYMER must be specified together.
+        // Since the viscosity is calculated based on the Mark-Houwink equation and Huggins equation, we need to
+        // have keyword PLYVMH for the coefficients of the formulation.
+        // For the regions, PLYVMH shares the same region with the mixing region specified with PLMIXNUM.
+
+        // TODO: as the first part of the implementation, we use constant polymer weight, without tracking the
+        // TODO: transport of the polymer molecular weight.
+
+        // TODO: for some keywords work with the oridinary POLYMER keyword while not work with polymer molecular weight,
+        // TODO: we should give a warning to tell these are not used and will take no effects.
+
+        // TODO: the order of the checking needs some design here
+
+        // sanity check
+        if (enablePolymerMW && !deck.hasKeyword("POLYMW")) {
+            throw std::runtime_error("Polymer molecular weight related functionality is requested at compile time, but "
+                                     "the deck does not contain the POLYMW keyword");
+        } else if (!enablePolymerMW && deck.hasKeyword("POLYMW")) {
+            throw std::runtime_error("Polymer molecular weight related functionality is disabled at compile time, but "
+                                     " the deck contains the POLYMW keyword");
+        }
+
+        if ( deck.hasKeyword("POLYMW") && !deck.hasKeyword("POLYMER") ) {
+            throw std::logic_error("POLYMER keyword must be specified along with POLYMW keyword to activate polymer "
+                                   "related functionality ");
+        }
+
         if (!deck.hasKeyword("POLYMW"))
             return;
-
-        // TODO: some other sanity check will also be done here.
-
-        // some sanity checks: if polymers are enabled, the POLYMER keyword must be
-        // present, if polymers are disabled the keyword must not be present.
-        if (enablePolymerMW && !deck.hasKeyword("POLYMER")) {
-            throw std::runtime_error("Non-trivial polymer treatment requested at compile time, but "
-                                     "the deck does not contain the POLYMER keyword");
-        }
-        else if (!enablePolymerMW && deck.hasKeyword("POLYMW")) {
-            throw std::runtime_error("Polymer treatment disabled at compile time, but the deck "
-                                     "contains the POLYMER keyword");
-        }
 
         const auto& tableManager = eclState.getTableManager();
 
@@ -131,7 +147,7 @@ public:
                            plyrockTable.getMaxAdsorbtionColumn()[satRegionIdx]);
             }
         } else {
-            throw std::runtime_error("PLYROCK must be specified in POLYMER runs\n");
+            throw std::runtime_error("PLYROCK must be specified in POLYMW runs\n");
         }
 
         // initialize the objects which deal with the PLYADS keyword
@@ -146,32 +162,17 @@ public:
                 plyadsAdsorbedPolymer_[satRegionIdx].setXYContainers(c, ads);
             }
         } else {
-            throw std::runtime_error("PLYADS must be specified in POLYMER runs\n");
+            throw std::runtime_error("PLYADS must be specified in POLYMERMW runs\n");
         }
 
 
-        unsigned numPvtRegions = tableManager.getTabdims().getNumPVTTables();
-        setNumPvtRegions(numPvtRegions);
-
-        // initialize the objects which deal with the PLYVISC keyword
-        const auto& plyviscTables = tableManager.getPlyviscTables();
-        if (!plyviscTables.empty()) {
-
-            assert(numPvtRegions == plyviscTables.size());
-            for (unsigned pvtRegionIdx = 0; pvtRegionIdx < numPvtRegions; ++ pvtRegionIdx) {
-                const auto& plyadsTable = plyviscTables.template getTable<Opm::PlyviscTable>(pvtRegionIdx);
-                // Copy data
-                const auto& c = plyadsTable.getPolymerConcentrationColumn();
-                const auto& visc = plyadsTable.getViscosityMultiplierColumn();
-                plyviscViscosityMultiplierTable_[pvtRegionIdx].setXYContainers(c, visc);
-            }
-        } else {
-            throw std::runtime_error("PLYVISC must be specified in POLYMER runs\n");
-        }
+        // TODO: without PLYVISC keyword, we might not need PVT regions here
+        // const unsigned numPvtRegions = tableManager.getTabdims().getNumPVTTables();
+        // setNumPvtRegions(numPvtRegions);
 
         // initialize the objects which deal with the PLYMAX keyword
         const auto& plymaxTables = tableManager.getPlymaxTables();
-        unsigned numMixRegions = plymaxTables.size();
+        const unsigned numMixRegions = plymaxTables.size();
         setNumMixRegions(numMixRegions);
         if (!plymaxTables.empty()) {
             for (unsigned mixRegionIdx = 0; mixRegionIdx < numMixRegions; ++ mixRegionIdx) {
@@ -182,20 +183,13 @@ public:
             throw std::runtime_error("PLYMAX must be specified in POLYMER runs\n");
         }
 
-        if (deck.hasKeyword("PLMIXPAR")) {
-            // initialize the objects which deal with the PLMIXPAR keyword
-            for (unsigned mixRegionIdx = 0; mixRegionIdx < numMixRegions; ++ mixRegionIdx) {
-                const auto& plmixparRecord = deck.getKeyword("PLMIXPAR").getRecord(mixRegionIdx);
-                setPlmixpar(mixRegionIdx, plmixparRecord.getItem("TODD_LONGSTAFF").getSIDouble(0));
-            }
-        } else {
-            throw std::runtime_error("PLMIXPAR must be specified in POLYMER runs\n");
-        }
+        // TODO: we need to decide whether to use the keyword PVMHNUM to specify the region for the keyword PLYVMH
+        // TODO: PLYVMH is the keyword we have to specify here for the keyword PLYVMH
     }
 #endif
 
     /*!
-     * \brief Specify the number of satuation regions.
+     * \brief Specify the number of saturation regions.
      *
      * This must be called before setting the PLYROCK and PLYADS of any region.
      */
@@ -229,17 +223,6 @@ public:
     }
 
     /*!
-     * \brief Specify the polymer rock properties a single region.
-     *
-     * The index of specified here must be in range [0, numSatRegions)
-     */
-    static void setAdsrock(unsigned satRegionIdx,
-                           const TabulatedFunction& plyadsAdsorbedPolymer)
-    {
-        plyadsAdsorbedPolymer_[satRegionIdx] = plyadsAdsorbedPolymer;
-    }
-
-    /*!
      * \brief Specify the number of pvt regions.
      *
      * This must be called before setting the PLYVISC of any region.
@@ -268,7 +251,6 @@ public:
     static void setNumMixRegions(unsigned numRegions)
     {
         plymaxMaxConcentration_.resize(numRegions);
-        plymixparToddLongstaff_.resize(numRegions);
     }
 
     /*!
@@ -283,19 +265,6 @@ public:
     }
 
     /*!
-     * \brief Specify the maximum polymer concentration a single region.
-     *
-     * The index of specified here must be in range [0, numMixRegionIdx)
-     */
-    static void setPlmixpar(unsigned mixRegionIdx,
-                            const Scalar& plymixparToddLongstaff)
-    {
-        plymixparToddLongstaff_[mixRegionIdx] = plymixparToddLongstaff;
-    }
-
-
-
-    /*!
      * \brief Register all run-time parameters for the black-oil polymer module.
      */
     static void registerParameters()
@@ -305,8 +274,7 @@ public:
             return;
 
         // TODO: it needs a new VTK module
-        // Ewoms::VtkBlackOilPolymerMWModule<TypeTag>::registerParameters();
-        Ewoms::VtkBlackOilPolymerModule<TypeTag>::registerParameters();
+        Ewoms::VtkBlackOilPolymerMWModule<TypeTag>::registerParameters();
     }
 
     /*!
@@ -320,8 +288,7 @@ public:
             return;
 
         // TODO: it needs a new VTK module
-        // model.addOutputModule(new Ewoms::VtkBlackOilPolymerMWModule<TypeTag>(simulator));
-        model.addOutputModule(new Ewoms::VtkBlackOilPolymerModule<TypeTag>(simulator));
+        model.addOutputModule(new Ewoms::VtkBlackOilPolymerMWModule<TypeTag>(simulator));
     }
 
     static bool primaryVarApplies(unsigned pvIdx)
@@ -583,17 +550,10 @@ public:
     static const Scalar plymaxMaxConcentration(const ElementContext& elemCtx,
                                                unsigned scvIdx,
                                                unsigned timeIdx)
+    // TODO: mixing regions are used for polymer maximum concentration
     {
         unsigned polymerMixRegionIdx = elemCtx.problem().plmixnumRegionIndex(elemCtx, scvIdx, timeIdx);
         return plymaxMaxConcentration_[polymerMixRegionIdx];
-    }
-
-    static const Scalar plymixparToddLongstaff(const ElementContext& elemCtx,
-                                               unsigned scvIdx,
-                                               unsigned timeIdx)
-    {
-        unsigned polymerMixRegionIdx = elemCtx.problem().plmixnumRegionIndex(elemCtx, scvIdx, timeIdx);
-        return plymixparToddLongstaff_[polymerMixRegionIdx];
     }
 
 private:
@@ -603,9 +563,9 @@ private:
     static std::vector<Scalar> plyrockAdsorbtionIndex_;
     static std::vector<Scalar> plyrockMaxAdsorbtion_;
     static std::vector<TabulatedFunction> plyadsAdsorbedPolymer_;
+    // TODO: this table will be removed
     static std::vector<TabulatedFunction> plyviscViscosityMultiplierTable_;
     static std::vector<Scalar> plymaxMaxConcentration_;
-    static std::vector<Scalar> plymixparToddLongstaff_;
 };
 
 
@@ -641,10 +601,6 @@ BlackOilPolymerMWModule<TypeTag, enablePolymerMWV>::plyviscViscosityMultiplierTa
 template <class TypeTag, bool enablePolymerMWV>
 std::vector<typename BlackOilPolymerMWModule<TypeTag, enablePolymerMWV>::Scalar>
 BlackOilPolymerMWModule<TypeTag, enablePolymerMWV>::plymaxMaxConcentration_;
-
-template <class TypeTag, bool enablePolymerMWV>
-std::vector<typename BlackOilPolymerMWModule<TypeTag, enablePolymerMWV>::Scalar>
-BlackOilPolymerMWModule<TypeTag, enablePolymerMWV>::plymixparToddLongstaff_;
 
 /*!
  * \ingroup BlackOil

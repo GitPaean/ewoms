@@ -42,7 +42,6 @@
 #include <opm/parser/eclipse/EclipseState/Tables/PlyrockTable.hpp>
 #include <opm/parser/eclipse/EclipseState/Tables/PlyshlogTable.hpp>
 #include <opm/parser/eclipse/EclipseState/Tables/PlyviscTable.hpp>
-#include <opm/parser/eclipse/EclipseState/Tables/PlyshlogTable.hpp>
 #endif
 
 #include <opm/material/common/Valgrind.hpp>
@@ -99,6 +98,8 @@ public:
     {
         // some sanity checks: if polymers are enabled, the POLYMER keyword must be
         // present, if polymers are disabled the keyword must not be present.
+        // TODO: this part will affect how to do the sanity check when POLYMW keyword is defined.
+        // TODO: POLYMER is possible defined while it should not enter this module if EnablePolyerMW is true
         if (enablePolymer && !deck.hasKeyword("POLYMER")) {
             throw std::runtime_error("Non-trivial polymer treatment requested at compile time, but "
                                      "the deck does not contain the POLYMER keyword");
@@ -289,6 +290,7 @@ public:
         plyrockMaxAdsorbtion_[satRegionIdx] = plyrockMaxAdsorbtion;
     }
 
+    // TODO: this function looks like not used. Saturation region is used for plyadsAdsorbedPolymer_
     /*!
      * \brief Specify the polymer rock properties a single region.
      *
@@ -344,7 +346,7 @@ public:
     }
 
     /*!
-     * \brief Specify the maximum polymer concentration a single region.
+     * \brief Specify the mixing parameter in a region.
      *
      * The index of specified here must be in range [0, numMixRegionIdx)
      */
