@@ -31,6 +31,7 @@
 #include "blackoilproperties.hh"
 #include "blackoilsolventmodules.hh"
 #include "blackoilpolymermodules.hh"
+#include "blackoilpolymermwmodules.hh"
 
 #include <ewoms/disc/common/fvbaseprimaryvariables.hh>
 
@@ -48,6 +49,9 @@ class BlackOilSolventModule;
 
 template <class TypeTag, bool enablePolymer>
 class BlackOilPolymerModule;
+
+template <class TypeTag, bool enablePolymerMW>
+class BlackOilPolymerMWModule;
 
 /*!
  * \ingroup BlackOilModel
@@ -89,6 +93,7 @@ class BlackOilPrimaryVariables : public FvBasePrimaryVariables<TypeTag>
     enum { numComponents = GET_PROP_VALUE(TypeTag, NumComponents) };
     enum { enableSolvent = GET_PROP_VALUE(TypeTag, EnableSolvent) };
     enum { enablePolymer = GET_PROP_VALUE(TypeTag, EnablePolymer) };
+    enum { enablePolymerMW = GET_PROP_VALUE(TypeTag, EnablePolymerMW) };
     enum { gasCompIdx = FluidSystem::gasCompIdx };
     enum { waterCompIdx = FluidSystem::waterCompIdx };
     enum { oilCompIdx = FluidSystem::oilCompIdx };
@@ -97,6 +102,7 @@ class BlackOilPrimaryVariables : public FvBasePrimaryVariables<TypeTag>
     typedef Dune::FieldVector<Scalar, numComponents> ComponentVector;
     typedef BlackOilSolventModule<TypeTag, enableSolvent> SolventModule;
     typedef BlackOilPolymerModule<TypeTag, enablePolymer> PolymerModule;
+    typedef BlackOilPolymerMWModule<TypeTag, enablePolymer> PolymerModuleMW;
 
 
     static_assert(numPhases == 3, "The black-oil model assumes three phases!");
@@ -253,6 +259,8 @@ public:
 
         // set the primary variables of the polymer module
         PolymerModule::assignPrimaryVars(*this, solSat);
+
+        // TODO: something related to PolymerMWModule needs to be done here
     }
 
     /*!
@@ -577,6 +585,8 @@ private:
             return 0.0;
 
         return (*this)[Indices::polymerConcentrationIdx];
+        // TODO: it needs to be done for the polymer molecular weight.
+        // TODO: and also check the indices to make sure everything is okay
     }
 
     template <class Container>

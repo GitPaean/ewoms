@@ -43,6 +43,7 @@
 #include "blackoilproperties.hh"
 #include "blackoilsolventmodules.hh"
 #include "blackoilpolymermodules.hh"
+#include "blackoilpolymermwmodules.hh"
 #include "blackoildarcyfluxmodule.hh"
 
 #include <ewoms/models/common/multiphasebasemodel.hh>
@@ -71,6 +72,7 @@ NEW_TYPE_TAG(BlackOilModel, INHERITS_FROM(MultiPhaseBaseModel,
                                           VtkBlackOil,
                                           VtkBlackOilSolvent,
                                           VtkBlackOilPolymer,
+                                          VtkBlackOilPolymerMW,
                                           VtkComposition));
 
 //! Set the local residual function
@@ -108,6 +110,7 @@ SET_TYPE_PROP(BlackOilModel, FluxModule, Ewoms::BlackOilDarcyFluxModule<TypeTag>
 //! The indices required by the model
 SET_TYPE_PROP(BlackOilModel, Indices,
               Ewoms::BlackOilIndices<GET_PROP_VALUE(TypeTag, EnableSolvent)?1:0, GET_PROP_VALUE(TypeTag, EnablePolymer)?1:0, /*PVOffset=*/0>);
+// TODO: I should add the EnablePolymerMW here
 
 //! Set the fluid system to the black-oil fluid system by default
 SET_PROP(BlackOilModel, FluidSystem)
@@ -214,6 +217,7 @@ class BlackOilModel
 
     typedef BlackOilSolventModule<TypeTag> SolventModule;
     typedef BlackOilPolymerModule<TypeTag> PolymerModule;
+    typedef BlackOilPolymerMWModule<TypeTag> PolymerMWModule;
 
 public:
     BlackOilModel(Simulator& simulator)
@@ -229,6 +233,7 @@ public:
 
         SolventModule::registerParameters();
         PolymerModule::registerParameters();
+        // TODO: one for PolymerMWModule
 
         // register runtime parameters of the VTK output modules
         Ewoms::VtkBlackOilModule<TypeTag>::registerParameters();
@@ -261,6 +266,9 @@ public:
         else
             assert(false);
 
+        // TODO: something wrong can happen here, we need to do something related to polymer molecular weight here
+        // TODO: the Applies functions need to be checked
+
         return oss.str();
     }
 
@@ -279,6 +287,9 @@ public:
             return PolymerModule::eqName(eqIdx);
         else
             assert(false);
+
+        // TODO: something wrong can happen here, we need to do something related to polymer molecular weight here
+        // TODO: the Applies functions need to be checked
 
         return oss.str();
     }

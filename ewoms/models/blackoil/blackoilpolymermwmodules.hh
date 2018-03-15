@@ -29,7 +29,7 @@
 #define EWOMS_BLACK_OIL_POLYMER_MW_MODULE_HH
 
 #include "blackoilproperties.hh"
-#include <ewoms/io/vtkblackoilpolymermodule.hh>
+#include <ewoms/io/vtkblackoilpolymermwmodule.hh>
 #include <ewoms/models/common/quantitycallbacks.hh>
 
 #include <opm/material/common/Tabulated1DFunction.hpp>
@@ -96,19 +96,21 @@ public:
      */
     static void initFromDeck(const Opm::Deck& deck, const Opm::EclipseState& eclState)
     {
+        if (!deck.hasKeyword("POLYMW"))
+            return;
+
+        // TODO: some other sanity check will also be done here.
+
         // some sanity checks: if polymers are enabled, the POLYMER keyword must be
         // present, if polymers are disabled the keyword must not be present.
         if (enablePolymerMW && !deck.hasKeyword("POLYMER")) {
             throw std::runtime_error("Non-trivial polymer treatment requested at compile time, but "
                                      "the deck does not contain the POLYMER keyword");
         }
-        else if (!enablePolymer && deck.hasKeyword("POLYMER")) {
+        else if (!enablePolymerMW && deck.hasKeyword("POLYMW")) {
             throw std::runtime_error("Polymer treatment disabled at compile time, but the deck "
                                      "contains the POLYMER keyword");
         }
-
-        if (!deck.hasKeyword("POLYMER"))
-            return; // polymer treatment is supposed to be disabled
 
         const auto& tableManager = eclState.getTableManager();
 
@@ -298,7 +300,7 @@ public:
      */
     static void registerParameters()
     {
-        if (!enablePolymer)
+        if (!enablePolymerMW)
             // polymers have been disabled at compile time
             return;
 
@@ -313,7 +315,7 @@ public:
     static void registerOutputModules(Model& model,
                                       Simulator& simulator)
     {
-        if (!enablePolymer)
+        if (!enablePolymerMW)
             // polymers have been disabled at compile time
             return;
 
@@ -324,7 +326,7 @@ public:
 
     static bool primaryVarApplies(unsigned pvIdx)
     {
-        if (!enablePolymer)
+        if (!enablePolymerMW)
             // polymers have been disabled at compile time
             return false;
 
@@ -348,7 +350,7 @@ public:
 
     static bool eqApplies(unsigned eqIdx)
     {
-        if (!enablePolymer)
+        if (!enablePolymerMW)
             return false;
 
         return eqIdx == contiPolymerEqIdx;
@@ -374,7 +376,7 @@ public:
     static void addStorage(Dune::FieldVector<LhsEval, numEq>& storage,
                            const IntensiveQuantities& intQuants)
     {
-        if (!enablePolymer)
+        if (!enablePolymerMW)
             return;
 
         const auto& fs = intQuants.fluidState();
@@ -406,7 +408,7 @@ public:
                             unsigned timeIdx)
 
     {
-        if (!enablePolymer)
+        if (!enablePolymerMW)
             return;
 
         const auto& extQuants = elemCtx.extensiveQuantities(scvfIdx, timeIdx);
@@ -449,7 +451,7 @@ public:
     static void assignPrimaryVars(PrimaryVariables& priVars,
                                   Scalar polymerConcentration)
     {
-        if (!enablePolymer)
+        if (!enablePolymerMW)
             return;
 
         priVars[polymerConcentrationIdx] = polymerConcentration;
@@ -462,7 +464,7 @@ public:
                                   const PrimaryVariables& oldPv,
                                   const EqVector& delta)
     {
-        if (!enablePolymer)
+        if (!enablePolymerMW)
             return;
 
         // do a plain unchopped Newton update
@@ -493,7 +495,7 @@ public:
     template <class DofEntity>
     static void serializeEntity(const Model& model, std::ostream& outstream, const DofEntity& dof)
     {
-        if (!enablePolymer)
+        if (!enablePolymerMW)
             return;
 
         unsigned dofIdx = model.dofMapper().index(dof);
@@ -504,7 +506,7 @@ public:
     template <class DofEntity>
     static void deserializeEntity(Model& model, std::istream& instream, const DofEntity& dof)
     {
-        if (!enablePolymer)
+        if (!enablePolymerMW)
             return;
 
         unsigned dofIdx = model.dofMapper().index(dof);
@@ -608,41 +610,41 @@ private:
 
 
 
-template <class TypeTag, bool enablePolymerV>
-std::vector<typename BlackOilPolymerMWModule<TypeTag, enablePolymerV>::Scalar>
-BlackOilPolymerMWModule<TypeTag, enablePolymerV>::plyrockDeadPoreVolume_;
+template <class TypeTag, bool enablePolymerMWV>
+std::vector<typename BlackOilPolymerMWModule<TypeTag, enablePolymerMWV>::Scalar>
+BlackOilPolymerMWModule<TypeTag, enablePolymerMWV>::plyrockDeadPoreVolume_;
 
-template <class TypeTag, bool enablePolymerV>
-std::vector<typename BlackOilPolymerMWModule<TypeTag, enablePolymerV>::Scalar>
-BlackOilPolymerMWModule<TypeTag, enablePolymerV>::plyrockResidualResistanceFactor_;
+template <class TypeTag, bool enablePolymerMWV>
+std::vector<typename BlackOilPolymerMWModule<TypeTag, enablePolymerMWV>::Scalar>
+BlackOilPolymerMWModule<TypeTag, enablePolymerMWV>::plyrockResidualResistanceFactor_;
 
-template <class TypeTag, bool enablePolymerV>
-std::vector<typename BlackOilPolymerMWModule<TypeTag, enablePolymerV>::Scalar>
-BlackOilPolymerMWModule<TypeTag, enablePolymerV>::plyrockRockDensityFactor_;
+template <class TypeTag, bool enablePolymerMWV>
+std::vector<typename BlackOilPolymerMWModule<TypeTag, enablePolymerMWV>::Scalar>
+BlackOilPolymerMWModule<TypeTag, enablePolymerMWV>::plyrockRockDensityFactor_;
 
-template <class TypeTag, bool enablePolymerV>
-std::vector<typename BlackOilPolymerMWModule<TypeTag, enablePolymerV>::Scalar>
-BlackOilPolymerMWModule<TypeTag, enablePolymerV>::plyrockAdsorbtionIndex_;
+template <class TypeTag, bool enablePolymerMWV>
+std::vector<typename BlackOilPolymerMWModule<TypeTag, enablePolymerMWV>::Scalar>
+BlackOilPolymerMWModule<TypeTag, enablePolymerMWV>::plyrockAdsorbtionIndex_;
 
-template <class TypeTag, bool enablePolymerV>
-std::vector<typename BlackOilPolymerMWModule<TypeTag, enablePolymerV>::Scalar>
-BlackOilPolymerMWModule<TypeTag, enablePolymerV>::plyrockMaxAdsorbtion_;
+template <class TypeTag, bool enablePolymerMWV>
+std::vector<typename BlackOilPolymerMWModule<TypeTag, enablePolymerMWV>::Scalar>
+BlackOilPolymerMWModule<TypeTag, enablePolymerMWV>::plyrockMaxAdsorbtion_;
 
-template <class TypeTag, bool enablePolymerV>
-std::vector<typename BlackOilPolymerMWModule<TypeTag, enablePolymerV>::TabulatedFunction>
-BlackOilPolymerMWModule<TypeTag, enablePolymerV>::plyadsAdsorbedPolymer_;
+template <class TypeTag, bool enablePolymerMWV>
+std::vector<typename BlackOilPolymerMWModule<TypeTag, enablePolymerMWV>::TabulatedFunction>
+BlackOilPolymerMWModule<TypeTag, enablePolymerMWV>::plyadsAdsorbedPolymer_;
 
-template <class TypeTag, bool enablePolymerV>
-std::vector<typename BlackOilPolymerMWModule<TypeTag, enablePolymerV>::TabulatedFunction>
-BlackOilPolymerMWModule<TypeTag, enablePolymerV>::plyviscViscosityMultiplierTable_;
+template <class TypeTag, bool enablePolymerMWV>
+std::vector<typename BlackOilPolymerMWModule<TypeTag, enablePolymerMWV>::TabulatedFunction>
+BlackOilPolymerMWModule<TypeTag, enablePolymerMWV>::plyviscViscosityMultiplierTable_;
 
-template <class TypeTag, bool enablePolymerV>
-std::vector<typename BlackOilPolymerMWModule<TypeTag, enablePolymerV>::Scalar>
-BlackOilPolymerMWModule<TypeTag, enablePolymerV>::plymaxMaxConcentration_;
+template <class TypeTag, bool enablePolymerMWV>
+std::vector<typename BlackOilPolymerMWModule<TypeTag, enablePolymerMWV>::Scalar>
+BlackOilPolymerMWModule<TypeTag, enablePolymerMWV>::plymaxMaxConcentration_;
 
-template <class TypeTag, bool enablePolymerV>
-std::vector<typename BlackOilPolymerMWModule<TypeTag, enablePolymerV>::Scalar>
-BlackOilPolymerMWModule<TypeTag, enablePolymerV>::plymixparToddLongstaff_;
+template <class TypeTag, bool enablePolymerMWV>
+std::vector<typename BlackOilPolymerMWModule<TypeTag, enablePolymerMWV>::Scalar>
+BlackOilPolymerMWModule<TypeTag, enablePolymerMWV>::plymixparToddLongstaff_;
 
 /*!
  * \ingroup BlackOil
@@ -651,7 +653,7 @@ BlackOilPolymerMWModule<TypeTag, enablePolymerV>::plymixparToddLongstaff_;
  * \brief Provides the volumetric quantities required for the equations needed by the
  *        polymers extension of the black-oil model.
  */
-template <class TypeTag, bool enablePolymerV = GET_PROP_VALUE(TypeTag, EnablePolymer)>
+template <class TypeTag, bool enablePolymerMWV = GET_PROP_VALUE(TypeTag, EnablePolymerMW)>
 class BlackOilPolymerMWIntensiveQuantities
 {
     typedef typename GET_PROP_TYPE(TypeTag, IntensiveQuantities) Implementation;
@@ -678,7 +680,7 @@ public:
      *        primary variables
      *
      */
-    void polymerPropertiesUpdate_(const ElementContext& elemCtx,
+    /* void polymerPropertiesUpdate_(const ElementContext& elemCtx,
                                   unsigned dofIdx,
                                   unsigned timeIdx)
     {
@@ -689,7 +691,7 @@ public:
         // permeability reduction due to polymer
         const Scalar& maxAdsorbtion = PolymerMWModule::plyrockMaxAdsorbtion(elemCtx, dofIdx, timeIdx);
         const auto& plyadsAdsorbedPolymer = PolymerMWModule::plyadsAdsorbedPolymer(elemCtx, dofIdx, timeIdx);
-        polymerAdsorption_ = plyadsAdsorbedPolymer.eval(polymerConcentration_, /*extrapolate=*/true);
+        polymerAdsorption_ = plyadsAdsorbedPolymer.eval(polymerConcentration_, *//*extrapolate=*//* true);
         if (PolymerMWModule::plyrockAdsorbtionIndex(elemCtx, dofIdx, timeIdx) == PolymerMWModule::NoDesorption ) {
             const Scalar& maxPolymerAdsorption = elemCtx.problem().maxPolymerAdsorption(elemCtx, dofIdx, timeIdx);
             polymerAdsorption_ = std::max(Evaluation(maxPolymerAdsorption) , polymerAdsorption_);
@@ -703,11 +705,11 @@ public:
         auto& fs = asImp_().fluidState_;
         const Evaluation& muWater = fs.viscosity(waterPhaseIdx);
         const auto& viscosityMultiplier = PolymerMWModule::plyviscViscosityMultiplierTable(elemCtx, dofIdx, timeIdx);
-        Evaluation viscosityMixture = viscosityMultiplier.eval(polymerConcentration_, /*extrapolate=*/true) * muWater;
+        Evaluation viscosityMixture = viscosityMultiplier.eval(polymerConcentration_, */ /*extrapolate=*/ /* true) * muWater;
 
         // Do the Todd-Longstaff mixing
         const Scalar plymixparToddLongstaff = PolymerMWModule::plymixparToddLongstaff(elemCtx, dofIdx, timeIdx);
-        Evaluation viscosityPolymer = viscosityMultiplier.eval(cmax, /*extrapolate=*/true) * muWater;
+        Evaluation viscosityPolymer = viscosityMultiplier.eval(cmax, */ /*extrapolate=*/ /* true) * muWater;
         Evaluation viscosityPolymerEffective = pow(viscosityMixture, plymixparToddLongstaff) * pow(viscosityPolymer, 1.0 - plymixparToddLongstaff);
         Evaluation viscosityWaterEffective = pow(viscosityMixture, plymixparToddLongstaff) * pow(muWater, 1.0 - plymixparToddLongstaff);
 
@@ -724,9 +726,9 @@ public:
         // update rock properties
         polymerDeadPoreVolume_ = PolymerMWModule::plyrockDeadPoreVolume(elemCtx, dofIdx, timeIdx);
         polymerRockDensity_ = PolymerMWModule::plyrockRockDensityFactor(elemCtx, dofIdx, timeIdx);
-    }
+    } */
 
-    const Evaluation& polymerConcentration() const
+    /* const Evaluation& polymerConcentration() const
     { return polymerConcentration_; }
 
     const Scalar& polymerDeadPoreVolume() const
@@ -744,7 +746,7 @@ public:
 
     // waterViscosity / effectiveWaterViscosity
     const Evaluation& waterViscosityCorrection() const
-    { return waterViscosityCorrection_; }
+    { return waterViscosityCorrection_; } */
 
 
 protected:
@@ -761,8 +763,9 @@ protected:
 
 };
 
-template <class TypeTag>
-class BlackOilMWPolymerIntensiveQuantities<TypeTag, false>
+// TODO: not sure if we need this
+/* template <class TypeTag>
+class BlackOilPolymerMWIntensiveQuantities<TypeTag, false>
 {
     typedef typename GET_PROP_TYPE(TypeTag, Evaluation) Evaluation;
     typedef typename GET_PROP_TYPE(TypeTag, ElementContext) ElementContext;
@@ -791,7 +794,7 @@ public:
 
     const Evaluation& waterViscosityCorrection() const
     { throw std::runtime_error("waterViscosityCorrection() called but polymers are disabled"); }
-};
+}; */
 
 
 /*!
@@ -831,74 +834,18 @@ public:
      * \brief Method which calculates the shear factor based on flow velocity
      *
      * This is the variant of the method which assumes that the problem is specified
-     * using permeabilities, i.e., *not* via transmissibilities.
-     */
-    template <class Dummy = bool> // we need to make this method a template to avoid
-                                  // compiler errors if it is not instantiated!
-    void updateShearMultipliersPerm(const ElementContext& elemCtx OPM_UNUSED,
-                                    unsigned scvfIdx OPM_UNUSED,
-                                    unsigned timeIdx OPM_UNUSED)
-    {
-        throw std::runtime_error("The extension of the blackoil model for polymers is not yet "
-                                 "implemented for problems specified using permeabilities.");
-    }
-
-    /*!
-     * \brief Method which calculates the shear factor based on flow velocity
-     *
-     * This is the variant of the method which assumes that the problem is specified
      * using transmissibilities, i.e., *not* via permeabilities.
      */
-    template <class Dummy = bool> // we need to make this method a template to avoid
-    // compiler errors if it is not instantiated!
-    void updateShearMultipliers(const ElementContext& elemCtx,
-                                unsigned scvfIdx,
-                                unsigned timeIdx)
-    {
-
-        waterShearFactor_ = 1.0;
-        polymerShearFactor_ = 1.0;
-    }
-
-    const Evaluation& polymerShearFactor() const
-    { return polymerShearFactor_; }
-
-    const Evaluation& waterShearFactor() const
-    { return waterShearFactor_; }
-
-
 private:
     Implementation& asImp_()
     { return *static_cast<Implementation*>(this); }
-
-    Evaluation polymerShearFactor_;
-    Evaluation waterShearFactor_;
-
 };
 
-template <class TypeTag>
-class BlackOilMWPolymerExtensiveQuantities<TypeTag, false>
+/* template <class TypeTag>
+class BlackOilPolymerMWExtensiveQuantities<TypeTag, false>
 {
-    typedef typename GET_PROP_TYPE(TypeTag, ElementContext) ElementContext;
-    typedef typename GET_PROP_TYPE(TypeTag, Evaluation) Evaluation;
-
 public:
-    void updateShearMultipliers(const ElementContext& elemCtx OPM_UNUSED,
-                                unsigned scvfIdx OPM_UNUSED,
-                                unsigned timeIdx OPM_UNUSED)
-    { }
-
-    void updateShearMultipliersPerm(const ElementContext& elemCtx OPM_UNUSED,
-                                    unsigned scvfIdx OPM_UNUSED,
-                                    unsigned timeIdx OPM_UNUSED)
-    { }
-
-    const Evaluation& polymerShearFactor() const
-    { throw std::runtime_error("polymerShearFactor() called but polymers are disabled"); }
-
-    const Evaluation& waterShearFactor() const
-    { throw std::runtime_error("waterShearFactor() called but polymers are disabled"); }
-};
+}; */
 
 
 } // namespace Ewoms

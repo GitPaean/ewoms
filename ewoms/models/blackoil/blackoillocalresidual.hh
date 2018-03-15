@@ -31,6 +31,7 @@
 #include "blackoilproperties.hh"
 #include "blackoilsolventmodules.hh"
 #include "blackoilpolymermodules.hh"
+#include "blackoilpolymermwmodules.hh"
 
 
 namespace Ewoms {
@@ -74,6 +75,7 @@ class BlackOilLocalResidual : public GET_PROP_TYPE(TypeTag, DiscLocalResidual)
     typedef Opm::MathToolbox<Evaluation> Toolbox;
     typedef BlackOilSolventModule<TypeTag> SolventModule;
     typedef BlackOilPolymerModule<TypeTag> PolymerModule;
+    typedef BlackOilPolymerMWModule<TypeTag> PolymerMWModule;
 
 
 public:
@@ -144,6 +146,8 @@ public:
         // deal with polymer (if present)
         PolymerModule::addStorage(storage, intQuants);
 
+        // TODO: adding the one related to PolymerMWModule
+
     }
 
     /*!
@@ -188,6 +192,8 @@ public:
 
         // deal with polymer (if present)
         PolymerModule::computeFlux(flux, elemCtx, scvfIdx, timeIdx);
+
+        // TODO: adding the computeFlux relaed to polymer molecular weight
     }
 
     /*!

@@ -43,12 +43,12 @@
 namespace Ewoms {
 namespace Properties {
 // create new type tag for the VTK multi-phase output
-NEW_TYPE_TAG(VtkBlackOilPolymer);
+NEW_TYPE_TAG(VtkBlackOilPolymerMW);
 
 // create the property tags needed for the polymer output module
-NEW_PROP_TAG(EnablePolymer);
+NEW_PROP_TAG(EnablePolymerMW);
 NEW_PROP_TAG(EnableVtkOutput);
-NEW_PROP_TAG(VtkWritePolymerConcentration);
+/* NEW_PROP_TAG(VtkWritePolymerConcentration);
 NEW_PROP_TAG(VtkWritePolymerDeadPoreVolume);
 NEW_PROP_TAG(VtkWritePolymerAdsorption);
 NEW_PROP_TAG(VtkWritePolymerRockDensity);
@@ -61,7 +61,7 @@ SET_BOOL_PROP(VtkBlackOilPolymer, VtkWritePolymerDeadPoreVolume, true);
 SET_BOOL_PROP(VtkBlackOilPolymer, VtkWritePolymerViscosityCorrection, true);
 SET_BOOL_PROP(VtkBlackOilPolymer, VtkWriteWaterViscosityCorrection, true);
 SET_BOOL_PROP(VtkBlackOilPolymer, VtkWritePolymerRockDensity, true);
-SET_BOOL_PROP(VtkBlackOilPolymer, VtkWritePolymerAdsorption, true);
+SET_BOOL_PROP(VtkBlackOilPolymer, VtkWritePolymerAdsorption, true); */
 } // namespace Properties
 } // namespace Ewoms
 
@@ -90,7 +90,7 @@ class VtkBlackOilPolymerMWModule : public BaseOutputModule<TypeTag>
     typedef typename ParentType::ScalarBuffer ScalarBuffer;
 
 public:
-    VtkBlackOilPolymerModule(const Simulator& simulator)
+    VtkBlackOilPolymerMWModule(const Simulator& simulator)
         : ParentType(simulator)
     { }
 
@@ -129,7 +129,7 @@ public:
      */
     void allocBuffers()
     {
-        if (!EWOMS_GET_PARAM(TypeTag, bool, EnableVtkOutput))
+        /* if (!EWOMS_GET_PARAM(TypeTag, bool, EnableVtkOutput))
             return;
 
         if (!enablePolymer)
@@ -146,7 +146,7 @@ public:
         if (polymerViscosityCorrectionOutput_())
             this->resizeScalarBuffer_(polymerViscosityCorrection_);
         if (waterViscosityCorrectionOutput_())
-            this->resizeScalarBuffer_(waterViscosityCorrection_);
+            this->resizeScalarBuffer_(waterViscosityCorrection_); */
     }
 
     /*!
@@ -158,14 +158,14 @@ public:
         if (!EWOMS_GET_PARAM(TypeTag, bool, EnableVtkOutput))
             return;
 
-        if (!enablePolymer)
+        if (!enablePolymerMW)
             return;
 
-        for (unsigned dofIdx = 0; dofIdx < elemCtx.numPrimaryDof(/*timeIdx=*/0); ++dofIdx) {
-            const auto& intQuants = elemCtx.intensiveQuantities(dofIdx, /*timeIdx=*/0);
-            unsigned globalDofIdx = elemCtx.globalSpaceIndex(dofIdx, /*timeIdx=*/0);
+        // for (unsigned dofIdx = 0; dofIdx < elemCtx.numPrimaryDof(/*timeIdx=*/0); ++dofIdx) {
+        //     const auto& intQuants = elemCtx.intensiveQuantities(dofIdx, /*timeIdx=*/0);
+        //     unsigned globalDofIdx = elemCtx.globalSpaceIndex(dofIdx, /*timeIdx=*/0);
 
-            if (polymerConcentrationOutput_())
+        /*     if (polymerConcentrationOutput_())
                 polymerConcentration_[globalDofIdx] =
                     Opm::scalarValue(intQuants.polymerConcentration());
 
@@ -188,7 +188,7 @@ public:
             if (waterViscosityCorrectionOutput_())
                 waterViscosityCorrection_[globalDofIdx] =
                     Opm::scalarValue(intQuants.waterViscosityCorrection());
-        }
+        } */
     }
 
     /*!
@@ -196,7 +196,7 @@ public:
      */
     void commitBuffers(BaseOutputWriter& baseWriter)
     {
-        VtkMultiWriter *vtkWriter = dynamic_cast<VtkMultiWriter*>(&baseWriter);
+        /* VtkMultiWriter *vtkWriter = dynamic_cast<VtkMultiWriter*>(&baseWriter);
         if (!vtkWriter)
             return;
 
@@ -220,10 +220,11 @@ public:
 
         if (waterViscosityCorrectionOutput_())
             this->commitScalarBuffer_(baseWriter, "water viscosity correction", waterViscosityCorrection_);
+        */
     }
 
 private:
-    static bool polymerConcentrationOutput_()
+    /* static bool polymerConcentrationOutput_()
     { return EWOMS_GET_PARAM(TypeTag, bool, VtkWritePolymerConcentration); }
 
     static bool polymerDeadPoreVolumeOutput_()
@@ -246,7 +247,7 @@ private:
     ScalarBuffer polymerRockDensity_;
     ScalarBuffer polymerAdsorption_;
     ScalarBuffer polymerViscosityCorrection_;
-    ScalarBuffer waterViscosityCorrection_;
+    ScalarBuffer waterViscosityCorrection_; */
 };
 } // namespace Ewoms
 

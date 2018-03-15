@@ -31,6 +31,7 @@
 #include "blackoilproperties.hh"
 #include "blackoilsolventmodules.hh"
 #include "blackoilpolymermodules.hh"
+#include "blackoilpolymermwmodules.hh"
 
 #include <opm/material/fluidstates/BlackOilFluidState.hpp>
 #include <opm/material/common/Valgrind.hpp>
@@ -54,6 +55,7 @@ class BlackOilIntensiveQuantities
     , public GET_PROP_TYPE(TypeTag, FluxModule)::FluxIntensiveQuantities
     , public BlackOilSolventIntensiveQuantities<TypeTag>
     , public BlackOilPolymerIntensiveQuantities<TypeTag>
+    , public BlackOilPolymerMWIntensiveQuantities<TypeTag>
 {
     typedef typename GET_PROP_TYPE(TypeTag, DiscIntensiveQuantities) ParentType;
     typedef typename GET_PROP_TYPE(TypeTag, IntensiveQuantities) Implementation;
@@ -71,6 +73,7 @@ class BlackOilIntensiveQuantities
     enum { numEq = GET_PROP_VALUE(TypeTag, NumEq) };
     enum { enableSolvent = GET_PROP_VALUE(TypeTag, EnableSolvent) };
     enum { enablePolymer = GET_PROP_VALUE(TypeTag, EnablePolymer) };
+    enum { enablePolymerMW = GET_PROP_VALUE(TypeTag, EnablePolymerMW) };
     enum { numPhases = GET_PROP_VALUE(TypeTag, NumPhases) };
     enum { numComponents = GET_PROP_VALUE(TypeTag, NumComponents) };
     enum { waterCompIdx = FluidSystem::waterCompIdx };
@@ -327,6 +330,7 @@ public:
 
         asImp_().solventPvtUpdate_(elemCtx, dofIdx, timeIdx);
         asImp_().polymerPropertiesUpdate_(elemCtx, dofIdx, timeIdx);
+        // TODO: something needs to happen here
 
 
         // update the quantities which are required by the chosen
@@ -397,6 +401,7 @@ public:
 private:
     friend BlackOilSolventIntensiveQuantities<TypeTag>;
     friend BlackOilPolymerIntensiveQuantities<TypeTag>;
+    friend BlackOilPolymerMWIntensiveQuantities<TypeTag>;
 
 
     Implementation& asImp_()

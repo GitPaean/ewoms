@@ -31,6 +31,7 @@
 #include "blackoilproperties.hh"
 #include "blackoilsolventmodules.hh"
 #include "blackoilpolymermodules.hh"
+#include "blackoilpolymermwmodules.hh"
 
 
 #include <ewoms/models/common/multiphasebaseextensivequantities.hh>
@@ -53,10 +54,12 @@ class BlackOilExtensiveQuantities
     : public MultiPhaseBaseExtensiveQuantities<TypeTag>
     , public BlackOilSolventExtensiveQuantities<TypeTag>
     , public BlackOilPolymerExtensiveQuantities<TypeTag>
+    , public BlackOilPolymerMWExtensiveQuantities<TypeTag>
 {
     typedef MultiPhaseBaseExtensiveQuantities<TypeTag> MultiPhaseParent;
     typedef BlackOilSolventExtensiveQuantities<TypeTag> SolventParent;
     typedef BlackOilPolymerExtensiveQuantities<TypeTag> PolymerParent;
+    typedef BlackOilPolymerMWExtensiveQuantities<TypeTag> PolymerMWParent;
 
 
     typedef typename GET_PROP_TYPE(TypeTag, ExtensiveQuantities) Implementation;
@@ -77,6 +80,9 @@ public:
 
         asImp_().updateSolvent(elemCtx, scvfIdx, timeIdx);
         asImp_().updatePolymer(elemCtx, scvfIdx, timeIdx);
+        // TODO: for the extensive quantities, updatePolymer is defined in blackdarcyfluxmodule.hh
+        // It is used to update the shear factor related, for this injectivity project, we might not need
+        // it.
     }
 
 protected:

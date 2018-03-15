@@ -122,6 +122,10 @@ public:
                                  unsigned timeIdx OPM_UNUSED) const
     { return 0; }
 
+
+    // TODO: it is a base class for these region or simulator related stuff.
+    // TODO: maybe soemthing related to the polymer molecular weight implementation will need this
+
     /*!
      * \brief Returns the compressibility of the porous medium of a cell
      */
