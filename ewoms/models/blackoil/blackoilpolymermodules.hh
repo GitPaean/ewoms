@@ -96,20 +96,22 @@ public:
      */
     static void initFromDeck(const Opm::Deck& deck, const Opm::EclipseState& eclState)
     {
+        // TODO: there might be better strategy to handle the sanity check when POLYMW keyword is involved
+
         // some sanity checks: if polymers are enabled, the POLYMER keyword must be
         // present, if polymers are disabled the keyword must not be present.
-        // TODO: this part will affect how to do the sanity check when POLYMW keyword is defined.
-        // TODO: POLYMER is possible defined while it should not enter this module if EnablePolyerMW is true
         if (enablePolymer && !deck.hasKeyword("POLYMER")) {
             throw std::runtime_error("Non-trivial polymer treatment requested at compile time, but "
                                      "the deck does not contain the POLYMER keyword");
         }
-        else if (!enablePolymer && deck.hasKeyword("POLYMER")) {
+        // It is possible the POLYMER and POLYMW keywords are used together, for this case, it should not enter
+        // this module (enablePolymer == false), but it should not throw either
+        else if (!enablePolymer && deck.hasKeyword("POLYMER") && !deck.hasKeyword("POLYMW") ) {
             throw std::runtime_error("Polymer treatment disabled at compile time, but the deck "
                                      "contains the POLYMER keyword");
         }
 
-        if (!deck.hasKeyword("POLYMER"))
+        if (!deck.hasKeyword("POLYMER") || deck.hasKeyword("POLYMW") )
             return; // polymer treatment is supposed to be disabled
 
         const auto& tableManager = eclState.getTableManager();

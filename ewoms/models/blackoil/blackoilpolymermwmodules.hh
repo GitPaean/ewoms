@@ -66,6 +66,8 @@ class BlackOilPolymerMWModule
     typedef typename GET_PROP_TYPE(TypeTag, PrimaryVariables) PrimaryVariables;
     typedef typename GET_PROP_TYPE(TypeTag, IntensiveQuantities) IntensiveQuantities;
     typedef typename GET_PROP_TYPE(TypeTag, ExtensiveQuantities) ExtensiveQuantities;
+    // TODO: make here we should define a typedef for BlackOilPolymerMWIntensiveQuantities for later use
+    // TODO: unless I want to change all the name of the functions to be different from the old polymer implementation
     typedef typename GET_PROP_TYPE(TypeTag, ElementContext) ElementContext;
     typedef typename GET_PROP_TYPE(TypeTag, FluidSystem) FluidSystem;
     typedef typename GET_PROP_TYPE(TypeTag, Model) Model;
@@ -125,6 +127,13 @@ public:
                                    "related functionality ");
         }
 
+        const Opm::UnitSystem& unitSystem = deck.getActiveUnitSystem();
+
+        if (unitSystem.getName() != "Metric") {
+            throw std::logic_error("Only METRIC unit system is supported for the polymer molecular weight "
+                                   "related simulation for now");
+        }
+
         if (!deck.hasKeyword("POLYMW"))
             return;
 
@@ -162,13 +171,20 @@ public:
                 plyadsAdsorbedPolymer_[satRegionIdx].setXYContainers(c, ads);
             }
         } else {
-            throw std::runtime_error("PLYADS must be specified in POLYMERMW runs\n");
+            throw std::runtime_error("PLYADS must be specified in POLYMW runs\n");
         }
 
+        // for the several keywords that are used for standard polymer simulation, we should not use them.
+        // For the moment, we throw to let the user to remove them
+        if (deck.hasKeyword("PLYVISC") || deck.hasKeyword("PLMIXPAR")) {
+            Opm::OpmLog::warning("PLYVISC and PLMIXPAR should not be used in POLYMW runs, "
+                    "they will not take effects. Different viscosity model based on PLYVMH is used \n");
+        }
 
-        // TODO: without PLYVISC keyword, we might not need PVT regions here
-        // const unsigned numPvtRegions = tableManager.getTabdims().getNumPVTTables();
-        // setNumPvtRegions(numPvtRegions);
+        if (deck.hasKeyword("PLYSHLOG") || deck.hasKeyword("PLYSHEAR") || deck.hasKeyword("SHRATE")) {
+            Opm::OpmLog::warning("Shear calculation based on PLYSHLOG, PLYSHEAR or SHRATE is not supported "
+                                 "with POLYMW runs, they will not take any effect. \n");
+        }
 
         // initialize the objects which deal with the PLYMAX keyword
         const auto& plymaxTables = tableManager.getPlymaxTables();
@@ -180,11 +196,24 @@ public:
                 setPlymax(mixRegionIdx, plymaxTable.getPolymerConcentrationColumn()[mixRegionIdx]);
             }
         } else {
-            throw std::runtime_error("PLYMAX must be specified in POLYMER runs\n");
+            throw std::runtime_error("PLYMAX must be specified in POLYMW runs\n");
         }
 
-        // TODO: we need to decide whether to use the keyword PVMHNUM to specify the region for the keyword PLYVMH
-        // TODO: PLYVMH is the keyword we have to specify here for the keyword PLYVMH
+        // TODO: for now, we use the mixing region first for keyword PLYVMH
+        // initialize the PLYVMH related
+        const Opm::DeckKeyword& plyvmhKeyword = deck.getKeyword("PLYVMH");
+        assert(plyvmhKeyword.size() == numMixRegions);
+        if (plyvmhKeyword.size() > 0) {
+            for (size_t region_idx = 0; region_idx < plyvmhKeyword.size(); ++region_idx) {
+                const Opm::DeckRecord& record = plyvmhKeyword.getRecord(region_idx);
+                plyvmhCoefficients_[region_idx].k_mh = record.getItem("K_MH").getSIDouble(0);
+                plyvmhCoefficients_[region_idx].a_mh = record.getItem("A_MH").getSIDouble(0);
+                plyvmhCoefficients_[region_idx].gamma = record.getItem("GAMMA").getSIDouble(0);
+                plyvmhCoefficients_[region_idx].kappa = record.getItem("KAPPA").getSIDouble(0);
+            }
+        } else {
+            throw std::runtime_error("PLYVMH keyword must be specified in POLYMW rus \n");
+        }
     }
 #endif
 
@@ -223,27 +252,6 @@ public:
     }
 
     /*!
-     * \brief Specify the number of pvt regions.
-     *
-     * This must be called before setting the PLYVISC of any region.
-     */
-    static void setNumPvtRegions(unsigned numRegions)
-    {
-        plyviscViscosityMultiplierTable_.resize(numRegions);
-    }
-
-    /*!
-     * \brief Specify the polymer viscosity a single region.
-     *
-     * The index of specified here must be in range [0, numSatRegions)
-     */
-    static void setPlyvisc(unsigned satRegionIdx,
-                           const TabulatedFunction& plyviscViscosityMultiplierTable)
-    {
-        plyviscViscosityMultiplierTable_[satRegionIdx] = plyviscViscosityMultiplierTable;
-    }
-
-    /*!
      * \brief Specify the number of mix regions.
      *
      * This must be called before setting the PLYMAC and PLMIXPAR of any region.
@@ -251,6 +259,7 @@ public:
     static void setNumMixRegions(unsigned numRegions)
     {
         plymaxMaxConcentration_.resize(numRegions);
+        plyvmhCoefficients_.resize(numRegions);
     }
 
     /*!
@@ -346,7 +355,11 @@ public:
         if (!enablePolymerMW)
             return;
 
-        const auto& fs = intQuants.fluidState();
+        // TODO: the intensive quantities are defined based on multiple inheritance
+        // TODO: either we need to use different naming for the functions or we need to find a way
+        // TODO: to specify where the function it is from
+        // TODO: how about intQuants.BlackOilPolymerMWIntensiveQuantities<TypeTag>::polymerAdsorption
+/*         const auto& fs = intQuants.fluidState();
 
         LhsEval surfaceVolumeWater =
                 Toolbox::template decay<LhsEval>(fs.saturation(waterPhaseIdx))
@@ -366,6 +379,7 @@ public:
                 Toolbox::template decay<LhsEval>(1.0 - intQuants.porosity())
                 * Toolbox::template decay<LhsEval>(intQuants.polymerRockDensity())
                 * Toolbox::template decay<LhsEval>(intQuants.polymerAdsorption());
+*/
 
     }
 
@@ -534,19 +548,6 @@ public:
         return plyadsAdsorbedPolymer_[satnumRegionIdx];
     }
 
-    static const TabulatedFunction& plyviscViscosityMultiplierTable(const ElementContext& elemCtx,
-                                                                    unsigned scvIdx,
-                                                                    unsigned timeIdx)
-    {
-        unsigned pvtnumRegionIdx = elemCtx.problem().pvtRegionIndex(elemCtx, scvIdx, timeIdx);
-        return plyviscViscosityMultiplierTable_[pvtnumRegionIdx];
-    }
-
-    static const TabulatedFunction& plyviscViscosityMultiplierTable(unsigned pvtnumRegionIdx)
-    {
-        return plyviscViscosityMultiplierTable_[pvtnumRegionIdx];
-    }
-
     static const Scalar plymaxMaxConcentration(const ElementContext& elemCtx,
                                                unsigned scvIdx,
                                                unsigned timeIdx)
@@ -563,9 +564,16 @@ private:
     static std::vector<Scalar> plyrockAdsorbtionIndex_;
     static std::vector<Scalar> plyrockMaxAdsorbtion_;
     static std::vector<TabulatedFunction> plyadsAdsorbedPolymer_;
-    // TODO: this table will be removed
-    static std::vector<TabulatedFunction> plyviscViscosityMultiplierTable_;
     static std::vector<Scalar> plymaxMaxConcentration_;
+
+    struct PlyvmhCoefficients {
+        Scalar k_mh;
+        Scalar a_mh;
+        Scalar gamma;
+        Scalar kappa;
+    };
+
+    static std::vector<PlyvmhCoefficients> plyvmhCoefficients_;
 };
 
 
@@ -595,12 +603,12 @@ std::vector<typename BlackOilPolymerMWModule<TypeTag, enablePolymerMWV>::Tabulat
 BlackOilPolymerMWModule<TypeTag, enablePolymerMWV>::plyadsAdsorbedPolymer_;
 
 template <class TypeTag, bool enablePolymerMWV>
-std::vector<typename BlackOilPolymerMWModule<TypeTag, enablePolymerMWV>::TabulatedFunction>
-BlackOilPolymerMWModule<TypeTag, enablePolymerMWV>::plyviscViscosityMultiplierTable_;
-
-template <class TypeTag, bool enablePolymerMWV>
 std::vector<typename BlackOilPolymerMWModule<TypeTag, enablePolymerMWV>::Scalar>
 BlackOilPolymerMWModule<TypeTag, enablePolymerMWV>::plymaxMaxConcentration_;
+
+template <class TypeTag, bool enablePolymerMWV>
+std::vector<typename BlackOilPolymerMWModule<TypeTag, enablePolymerMWV>::PlyvmhCoefficients>
+BlackOilPolymerMWModule<TypeTag, enablePolymerMWV>::plyvmhCoefficients_;
 
 /*!
  * \ingroup BlackOil
@@ -713,6 +721,9 @@ protected:
     Scalar polymerDeadPoreVolume_;
     Scalar polymerRockDensity_;
     Evaluation polymerAdsorption_;
+    // TODO: with the new implementation, I think the following two will be one
+    // TODO: basically, it means the mixing is always full, mixing paramter is 1.0 here,
+    // TODO: although we do not use mixing parameter in the input and simulation
     Evaluation polymerViscosityCorrection_;
     Evaluation waterViscosityCorrection_;
 
