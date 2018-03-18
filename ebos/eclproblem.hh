@@ -292,6 +292,7 @@ class EclProblem : public GET_PROP_TYPE(TypeTag, BaseProblem)
     typedef BlackOilSolventModule<TypeTag> SolventModule;
     typedef BlackOilPolymerModule<TypeTag> PolymerModule;
     typedef BlackOilPolymerMWModule<TypeTag> PolymerMWModule;
+    typedef BlackOilPolymerIntensiveQuantities<TypeTag> PolymerIntensiveQuantities;
 
     typedef Opm::BlackOilFluidState<Scalar,
             FluidSystem,
@@ -1705,7 +1706,8 @@ private:
             unsigned compressedDofIdx = elemCtx.globalSpaceIndex(/*spaceIdx=*/0, /*timeIdx=*/0);
             const auto& intQuants = elemCtx.intensiveQuantities(/*spaceIdx=*/0, /*timeIdx=*/0);
 
-            maxPolymerAdsorption_[compressedDofIdx] = std::max(maxPolymerAdsorption_[compressedDofIdx] , Opm::scalarValue(intQuants.polymerAdsorption()));
+            maxPolymerAdsorption_[compressedDofIdx] = std::max(maxPolymerAdsorption_[compressedDofIdx],
+                                          Opm::scalarValue(intQuants.PolymerIntensiveQuantities::polymerAdsorption()));
         }
     }
 

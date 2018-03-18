@@ -54,12 +54,13 @@ class BlackOilExtensiveQuantities
     : public MultiPhaseBaseExtensiveQuantities<TypeTag>
     , public BlackOilSolventExtensiveQuantities<TypeTag>
     , public BlackOilPolymerExtensiveQuantities<TypeTag>
-    , public BlackOilPolymerMWExtensiveQuantities<TypeTag>
+// TODO: there might be no BlackOilPolymerMWExtensiveQuantities needed
+//     , public BlackOilPolymerMWExtensiveQuantities<TypeTag>
 {
     typedef MultiPhaseBaseExtensiveQuantities<TypeTag> MultiPhaseParent;
     typedef BlackOilSolventExtensiveQuantities<TypeTag> SolventParent;
     typedef BlackOilPolymerExtensiveQuantities<TypeTag> PolymerParent;
-    typedef BlackOilPolymerMWExtensiveQuantities<TypeTag> PolymerMWParent;
+    // typedef BlackOilPolymerMWExtensiveQuantities<TypeTag> PolymerMWParent;
 
 
     typedef typename GET_PROP_TYPE(TypeTag, ExtensiveQuantities) Implementation;

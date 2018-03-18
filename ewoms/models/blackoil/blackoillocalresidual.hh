@@ -147,6 +147,7 @@ public:
         PolymerModule::addStorage(storage, intQuants);
 
         // TODO: adding the one related to PolymerMWModule
+        PolymerMWModule::addStorage(storage, intQuants);
 
     }
 

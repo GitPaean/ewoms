@@ -330,7 +330,10 @@ public:
 
         asImp_().solventPvtUpdate_(elemCtx, dofIdx, timeIdx);
         asImp_().polymerPropertiesUpdate_(elemCtx, dofIdx, timeIdx);
-        // TODO: something needs to happen here
+        // the update from the PolymerMWModule
+        // here, we use function names from PolymerModule for simplicity
+        // TODO: the other way to do that is to specify which module explicitly
+        asImp_().polymerPropertiesUpdateMW_(elemCtx, dofIdx, timeIdx);
 
 
         // update the quantities which are required by the chosen
