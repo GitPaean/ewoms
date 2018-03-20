@@ -78,11 +78,13 @@ struct BlackOilTwoPhaseIndices
 
     //! Index of the primary variable for the first solvent
     static const int solventSaturationIdx  = PVOffset + numPhases;
+    // numSolvents-1 primary variables follow
 
     //! Index of the primary variable for the first polymer
     static const int polymerConcentrationIdx  = solventSaturationIdx + numSolvents;
 
-    // numSolvents-1 primary variables follow
+    //! Index of the primary variable for the second polymer primary variable (molecular weight)
+    static const int polymerMoleWeightIdx = polymerConcentrationIdx + 1;
 
 
     //////////////////////
@@ -130,11 +132,15 @@ struct BlackOilTwoPhaseIndices
     // two continuity equations follow
 
     //! Index of the continuity equation for the first solvent component
-    static const int contiSolventEqIdx = PVOffset + numPhases - 1 + numSolvents;
+    static const int contiSolventEqIdx = PVOffset + numPhases;
+    // numSolvents-1 continuity equations follow
 
     //! Index of the continuity equation for the first polymer component
-    static const int contiPolymerEqIdx = contiSolventEqIdx + numPolymers;
-    // numSolvents-1 continuity equations follow
+    static const int contiPolymerEqIdx = contiSolventEqIdx + numSolvents;
+    // numPolymers -1 continuity equations follow
+
+    //! Index of the continuity equation for the second polymer component (molecular weight)
+    static const int contiPolymerMWEqIdx = contiPolymerEqIdx + 1;
 
 };
 

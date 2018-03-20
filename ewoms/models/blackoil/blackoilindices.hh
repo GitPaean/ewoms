@@ -84,11 +84,14 @@ struct BlackOilIndices
 
     //! Index of the primary variable for the first solvent
     static const int solventSaturationIdx  = compositionSwitchIdx + numSolvents;
+    // numSolvents-1 primary variables for solvent follow
 
     //! Index of the primary variable for the first polymer
     static const int polymerConcentrationIdx  = solventSaturationIdx + numPolymers;
+    // numPolymers -1 primary variables for polymer follow
 
-    // numSolvents-1 primary variables follow
+    //! Index of the primary variable for the second polymer primary variable (molecular weight)
+    static const int polymerMoleWeightIdx = polymerConcentrationIdx + 1;
 
     ////////
     // Equation indices
@@ -99,11 +102,15 @@ struct BlackOilIndices
     // two continuity equations follow
 
     //! Index of the continuity equation for the first solvent component
-    static const int contiSolventEqIdx = PVOffset + numPhases - 1 + numSolvents;
+    static const int contiSolventEqIdx = PVOffset + numPhases;
+    // numSolvents-1 continuity equations follow
 
     //! Index of the continuity equation for the first polymer component
-    static const int contiPolymerEqIdx = contiSolventEqIdx + numPolymers;
-    // numSolvents-1 continuity equations follow
+    static const int contiPolymerEqIdx = contiSolventEqIdx + numSolvents;
+    // numPolymers -1 continuity equations follow
+
+    //! Index of the continuity equation for the second polymer component (molecular weight)
+    static const int contiPolymerMWEqIdx = contiPolymerEqIdx + 1;
 };
 
 } // namespace Ewoms
