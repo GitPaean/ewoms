@@ -89,6 +89,7 @@ class BlackOilPrimaryVariables : public FvBasePrimaryVariables<TypeTag>
     enum { numComponents = GET_PROP_VALUE(TypeTag, NumComponents) };
     enum { enableSolvent = GET_PROP_VALUE(TypeTag, EnableSolvent) };
     enum { enablePolymer = GET_PROP_VALUE(TypeTag, EnablePolymer) };
+    enum { enablePolymerMW = GET_PROP_VALUE(TypeTag, EnablePolymerMW) };
     enum { gasCompIdx = FluidSystem::gasCompIdx };
     enum { waterCompIdx = FluidSystem::waterCompIdx };
     enum { oilCompIdx = FluidSystem::oilCompIdx };
@@ -240,6 +241,8 @@ public:
         assignNaive(fsFlash);
     }
 
+    // TODO: this function is not called anywhere, so the extension for the polymer
+    // molecular weight is not done for this function
     template <class FluidState, class SolventContainer>
     void assignMassConservative(const FluidState& fluidState,
                                 const MaterialLawParams& matParams,
